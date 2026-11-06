@@ -8,7 +8,7 @@ This appeared while activating or deactivating a product in the Back Office with
 
 The activation path calls `AdminProductDataUpdater::activateProductIdList()`, which loads a `Product` object and calls `$product->update()`. In `ObjectModel::update()`, PrestaShop builds the product's shop fields with `getFieldsShop()`. In All shops context, it then applies those fields to each shop row in `product_shop`.
 
-The object is loaded with one shop's values, while the update targets multiple shops. That can copy the loaded shop's `price`, `id_tax_rules_group`, and `wholesale_price` over the shop-specific values for every targeted shop.
+The object is loaded with one shop's values, while the update targets multiple shops. That can copy the loaded shop's `price`, `id_tax_rules_group` over the shop-specific values for every targeted shop.
 
 ## The fix
 
@@ -20,15 +20,12 @@ if ($this->def['table'] === 'product'
 ) {
     unset(
         $fields['price'],
-        $fields['id_tax_rules_group'],
-        $fields['wholesale_price']
+        $fields['id_tax_rules_group']
     );
 }
 ```
 
 The patch leaves the base `product` table update in place. It only prevents these three fields from being written to existing `product_shop` rows during an All shops update. Other product fields, including `active`, continue through the normal update path.
-
-`wholesale_price` is included because this patch preserves per-shop wholesale pricing too. Remove that entry from the `unset()` call if wholesale price should be shared across shops.
 
 ## Effect and scope
 
@@ -42,7 +39,7 @@ The patch leaves the base `product` table update in place. It only prevents thes
 Before and after changing a product's status in All shops context, compare the per-shop rows:
 
 ```sql
-SELECT id_shop, active, price, id_tax_rules_group, wholesale_price
+SELECT id_shop, active, price, id_tax_rules_group
 FROM ps_product_shop
 WHERE id_product = 657627
 ORDER BY id_shop;
